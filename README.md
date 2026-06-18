@@ -27,7 +27,12 @@ static constexpr auto clean_query = heredoc::PlainHeredoc< R"(
 
 This results in `clean_query` containing only 2 lines, both terminated with
 a newline character, the leading empty line removed, the tailing empty text
-removed, but the indent preserved.
+removed, but the indent preserved. i.e.:
+
+```
+    Line 1: No junk newline before me!
+    Line 2: Indentation is explicitly kept.
+```
 
 ### heredoc::IndentHeredoc
 
