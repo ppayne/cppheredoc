@@ -11,13 +11,13 @@ namespace heredoc::detail {
 
     // Safely backtracks to the character immediately following the initial formatting newline
     constexpr std::string_view strip_leading_whitespace_and_newlines(std::string_view sv) {
-        std::size_t first_nonwhitespace = sv.find_first_not_of(" \t\n\r");
+        std::size_t first_nonwhitespace = sv.find_first_not_of(" \t\n");
         if (first_nonwhitespace == std::string_view::npos) {
             return ""; // String is completely empty or all whitespace
         }
 
         // Search backward from the first visible character to find the closest line break
-        std::size_t previous_newline = sv.substr(0, first_nonwhitespace).find_last_of("\r\n");
+        std::size_t previous_newline = sv.substr(0, first_nonwhitespace).find_last_of('\n');
         if (previous_newline == std::string_view::npos) {
             return sv; // No leading newlines exist (flat string format); preserve it entirely
         }
@@ -30,25 +30,17 @@ namespace heredoc::detail {
         if (sv.empty()) return sv;
 
         // find last non-whitespace character
-        std::size_t last_non_whitespace = sv.find_last_not_of(" \t\n\r");
+        std::size_t last_non_whitespace = sv.find_last_not_of(" \t\n");
         if (last_non_whitespace == std::string_view::npos) {
             // no non-whitespace, just return empty string
             return "";
         }
 
         // find next newline character
-        std::size_t next_nl = sv.find_first_of("\r\n", last_non_whitespace + 1);
+        std::size_t next_nl = sv.find_first_of('\n', last_non_whitespace + 1);
         if (next_nl == std::string_view::npos) {
             // no trailing newline
             return sv;
-        }
-
-        if ( next_nl + 1 < sv.size() ) {
-            if ( sv[next_nl] == '\r' && sv[next_nl + 1] == '\n' ) {
-                next_nl++;
-            } else if ( sv[next_nl] == '\n' && sv[next_nl + 1] == '\r' ) {
-                next_nl++;
-            }
         }
 
         return sv.substr(0, next_nl + 1);
@@ -70,7 +62,7 @@ namespace heredoc::detail {
             std::string_view line = (next_nl == std::string_view::npos) ? cursor : cursor.substr(0, next_nl);
 
             // Only factor in lines that contain actual text content (ignoring empty lines)
-            if (line.find_first_not_of(" \t\r\b") != std::string_view::npos) {
+            if (line.find_first_not_of(" \t\n") != std::string_view::npos) {
                 if (min_indent == static_cast<std::size_t>(-1) || current_indent < min_indent) {
                     min_indent = current_indent;
                 }
