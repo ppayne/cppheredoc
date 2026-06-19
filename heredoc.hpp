@@ -5,7 +5,7 @@
 #include <cstddef>
 
 namespace hereodoc {
-    constexpr const char acWhitespaceSet[] = " \t\r\n";
+    constexpr char const acWhitespaceSet[] = " \t\r\n";
 }
 
 // ============================================================================
@@ -14,7 +14,7 @@ namespace hereodoc {
 namespace heredoc::detail {
 
     // return position of last character of newline
-    constexpr std::size_t find_newline(std::string_view sv, std::size_t offset = 0) {
+    consteval std::size_t find_newline(std::string_view sv, std::size_t offset = 0) {
         std::size_t result = sv.find_first_of("\r\n", offset);
         if (result == std::string_view::npos) {
             return result;
@@ -32,13 +32,13 @@ namespace heredoc::detail {
     }
 
     // return position of last character of newline
-    constexpr std::size_t rfind_newline(std::string_view sv, std::size_t offset = std::string_view::npos) {
+    consteval std::size_t rfind_newline(std::string_view sv, std::size_t offset = std::string_view::npos) {
         std::size_t result = sv.find_last_of("\r\n", offset);
         return result;
     }
 
     // Skip over any leading blank or whitespace-only lines
-    constexpr std::string_view strip_leading_whitespace_lines(std::string_view sv) {
+    consteval std::string_view strip_leading_whitespace_lines(std::string_view sv) {
         std::size_t first_nonwhitespace = sv.find_first_not_of(hereodoc::acWhitespaceSet);
         if (first_nonwhitespace == std::string_view::npos) {
             return ""; // String is completely empty or all whitespace
@@ -54,7 +54,7 @@ namespace heredoc::detail {
     }
 
     // Trims a whitespace-only final line but PRESERVES the trailing newline character
-    constexpr std::string_view strip_trailing_whitespace_only_line(std::string_view sv) {
+    consteval std::string_view strip_trailing_whitespace_only_line(std::string_view sv) {
         if (sv.empty()) return sv;
 
         // find last non-whitespace character
@@ -75,7 +75,7 @@ namespace heredoc::detail {
     }
 
     // Computes the maximum common indentation found on all valid text lines in the block
-    constexpr std::size_t calculate_common_indent(std::string_view sv) {
+    consteval std::size_t calculate_common_indent(std::string_view sv) {
         std::size_t min_indent = static_cast<std::size_t>(-1); // Represents maximum size_t value
         std::string_view cursor = sv;
 
@@ -104,7 +104,7 @@ namespace heredoc::detail {
     }
 
     // Calculates exactly how many bytes the clean, un-indented multi-line string will take
-    constexpr std::size_t calculate_indented_size(std::string_view sv, std::size_t common_indent) {
+    consteval std::size_t calculate_indented_size(std::string_view sv, std::size_t common_indent) {
         std::size_t total_size = 0;
         std::string_view cursor = sv;
 
@@ -131,7 +131,7 @@ namespace heredoc::detail {
     struct StringLiteral {
         char value[N]; // Uninitialized array (safely overwritten by constructor)
 
-        constexpr StringLiteral(const char (&str)[N]) {
+        consteval StringLiteral(const char (&str)[N]) {
             std::copy_n(str, N, value);
         }
     };
@@ -152,11 +152,11 @@ template <std::size_t N>
 struct CleanString {
     char storage[N + 1];
 
-    constexpr const char* c_str() const { return storage; }
-    constexpr std::string_view view() const { return std::string_view(storage, N); }
-    constexpr std::size_t size() const { return N; }
+    consteval const char* c_str() const { return storage; }
+    consteval std::string_view view() const { return std::string_view(storage, N); }
+    consteval std::size_t size() const { return N; }
 
-    constexpr operator const char*() const { return storage; }
+    consteval operator const char*() const { return storage; }
 };
 
 /**
