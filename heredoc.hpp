@@ -4,20 +4,48 @@
 #include <algorithm>
 #include <cstddef>
 
+namespace hereodoc {
+    constexpr const char acWhitespaceSet[] = " \t\r\n";
+}
+
 // ============================================================================
 // Stanza 1: Flat Inner Namespace for Implementation Details
 // ============================================================================
 namespace heredoc::detail {
 
-    // Safely backtracks to the character immediately following the initial formatting newline
-    constexpr std::string_view strip_leading_whitespace_and_newlines(std::string_view sv) {
-        std::size_t first_nonwhitespace = sv.find_first_not_of(" \t\n");
+    // return position of last character of newline
+    constexpr std::size_t find_newline(std::string_view sv, std::size_t offset = 0) {
+        std::size_t result = sv.find_first_of("\r\n", offset);
+        if (result == std::string_view::npos) {
+            return result;
+        }
+
+        if ( result + 1 < sv.size() ) {
+            if ( sv[result] == '\n' && sv[result + 1] == '\r' ) {
+                return result + 1;
+            } else if ( sv[result] == '\r' && sv[result + 1] == '\n' ) {
+                return result + 1;
+            }
+        }
+
+        return result;
+    }
+
+    // return position of last character of newline
+    constexpr std::size_t rfind_newline(std::string_view sv, std::size_t offset = std::string_view::npos) {
+        std::size_t result = sv.find_last_of("\r\n", offset);
+        return result;
+    }
+
+    // Skip over any leading blank or whitespace-only lines
+    constexpr std::string_view strip_leading_whitespace_lines(std::string_view sv) {
+        std::size_t first_nonwhitespace = sv.find_first_not_of(hereodoc::acWhitespaceSet);
         if (first_nonwhitespace == std::string_view::npos) {
             return ""; // String is completely empty or all whitespace
         }
 
-        // Search backward from the first visible character to find the closest line break
-        std::size_t previous_newline = sv.substr(0, first_nonwhitespace).find_last_of('\n');
+        // Search backward from the first visible character to find the closest line break (might have to skip over spaces or tabs)
+        std::size_t previous_newline = rfind_newline( sv, first_nonwhitespace );
         if (previous_newline == std::string_view::npos) {
             return sv; // No leading newlines exist (flat string format); preserve it entirely
         }
@@ -30,14 +58,14 @@ namespace heredoc::detail {
         if (sv.empty()) return sv;
 
         // find last non-whitespace character
-        std::size_t last_non_whitespace = sv.find_last_not_of(" \t\n");
+        std::size_t last_non_whitespace = sv.find_last_not_of(hereodoc::acWhitespaceSet);
         if (last_non_whitespace == std::string_view::npos) {
             // no non-whitespace, just return empty string
             return "";
         }
 
         // find next newline character
-        std::size_t next_nl = sv.find_first_of('\n', last_non_whitespace + 1);
+        std::size_t next_nl = find_newline(sv, last_non_whitespace + 1);
         if (next_nl == std::string_view::npos) {
             // no trailing newline
             return sv;
@@ -58,11 +86,11 @@ namespace heredoc::detail {
                 current_indent++;
             }
 
-            std::size_t next_nl = cursor.find('\n');
+            std::size_t next_nl = find_newline(cursor);
             std::string_view line = (next_nl == std::string_view::npos) ? cursor : cursor.substr(0, next_nl);
 
             // Only factor in lines that contain actual text content (ignoring empty lines)
-            if (line.find_first_not_of(" \t\n") != std::string_view::npos) {
+            if (line.find_first_not_of(hereodoc::acWhitespaceSet) != std::string_view::npos) {
                 if (min_indent == static_cast<std::size_t>(-1) || current_indent < min_indent) {
                     min_indent = current_indent;
                 }
@@ -81,8 +109,8 @@ namespace heredoc::detail {
         std::string_view cursor = sv;
 
         while (!cursor.empty()) {
-            std::size_t next_nl = cursor.find('\n');
-            std::string_view line = (next_nl == std::string_view::npos) ? cursor : cursor.substr(0, next_nl);
+            std::size_t next_nl = find_newline(cursor);
+            std::string_view line = (next_nl == std::string_view::npos) ? cursor : cursor.substr(0, next_nl + 1);
 
             std::size_t leading_spaces = 0;
             while (leading_spaces < line.size() && (line[leading_spaces] == ' ' || line[leading_spaces] == '\t')) {
@@ -93,7 +121,6 @@ namespace heredoc::detail {
             total_size += (line.size() - strip_bytes);
 
             if (next_nl == std::string_view::npos) break;
-            total_size++; // Account for the newline char
             cursor.remove_prefix(next_nl + 1);
         }
         return total_size;
@@ -139,7 +166,7 @@ struct CleanString {
 template <detail::StringLiteral Literal>
 consteval auto PlainHeredoc() {
     constexpr std::string_view full_sv(Literal.value, sizeof(Literal.value) - 1);
-    constexpr std::string_view leading_stripped = detail::strip_leading_whitespace_and_newlines(full_sv);
+    constexpr std::string_view leading_stripped = detail::strip_leading_whitespace_lines(full_sv);
     constexpr std::string_view fully_stripped = detail::strip_trailing_whitespace_only_line(leading_stripped);
     constexpr std::size_t TargetSize = fully_stripped.size();
 
@@ -156,7 +183,7 @@ consteval auto PlainHeredoc() {
 template <detail::StringLiteral Literal>
 consteval auto IndentHeredoc() {
     constexpr std::string_view full_sv(Literal.value, sizeof(Literal.value) - 1);
-    constexpr std::string_view leading_stripped = detail::strip_leading_whitespace_and_newlines(full_sv);
+    constexpr std::string_view leading_stripped = detail::strip_leading_whitespace_lines(full_sv);
     constexpr std::string_view sv = detail::strip_trailing_whitespace_only_line(leading_stripped);
 
     constexpr std::size_t common_indent = detail::calculate_common_indent(sv);
@@ -167,8 +194,8 @@ consteval auto IndentHeredoc() {
     std::string_view cursor = sv;
 
     while (!cursor.empty()) {
-        std::size_t next_nl = cursor.find('\n');
-        std::string_view line = (next_nl == std::string_view::npos) ? cursor : cursor.substr(0, next_nl);
+        std::size_t next_nl = heredoc::detail::find_newline(cursor);
+        std::string_view line = (next_nl == std::string_view::npos) ? cursor : cursor.substr(0, next_nl + 1);
 
         std::size_t leading_spaces = 0;
         while (leading_spaces < line.size() && (line[leading_spaces] == ' ' || line[leading_spaces] == '\t')) {
@@ -183,7 +210,6 @@ consteval auto IndentHeredoc() {
         }
 
         if (next_nl == std::string_view::npos) break;
-        result.storage[write_idx++] = '\n';
         cursor.remove_prefix(next_nl + 1);
     }
 

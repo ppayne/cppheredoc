@@ -118,10 +118,69 @@ void test5() {
     std::cout << "\nAll conditions passed successfully!\n";
 }
 
+void test6() {
+    static constexpr auto clean_query = heredoc::PlainHeredoc<
+        "\r\n"
+        "Test string with embedded carriage returns\r\n"
+        "And trailing whitespace\r\n"
+        " "
+    >();
+
+    std::cout << "--- Verified Output Begin ---\n";
+    std::cout << clean_query;
+    std::cout << "--- Verified Output End ---\n";
+
+    static_assert(clean_query.view()[0] == 'T');
+    static_assert(clean_query.view() == static_cast<std::string_view>( "Test string with embedded carriage returns\r\nAnd trailing whitespace\r\n" ));
+
+    std::cout << "\nAll conditions passed successfully!\n";
+}
+
+void test7() {
+    static constexpr auto clean_query = heredoc::PlainHeredoc<
+        "  \n\r"
+        "Test string with embedded reverse carriage returns\n\r"
+        "And trailing whitespace\n\r"
+        " "
+    >();
+
+    std::cout << "--- Verified Output Begin ---\n";
+    std::cout << clean_query;
+    std::cout << "--- Verified Output End ---\n";
+
+    static_assert(clean_query.view()[0] == 'T');
+    static_assert(clean_query.view().ends_with('\r'));
+    static_assert(clean_query.view() == static_cast<std::string_view>( "Test string with embedded reverse carriage returns\n\rAnd trailing whitespace\n\r" ));
+
+    std::cout << "\nAll conditions passed successfully!\n";
+}
+
+void test8() {
+    static constexpr auto clean_query = heredoc::IndentHeredoc<
+        "  \n\r"
+        "  Test string with embedded reverse carriage returns\n\r"
+        "  And trailing whitespace\n\r"
+        " "
+    >();
+
+    std::cout << "--- Verified Output Begin ---\n";
+    std::cout << clean_query;
+    std::cout << "--- Verified Output End ---\n";
+
+    static_assert(clean_query.view()[0] == 'T');
+    static_assert(clean_query.view().ends_with('\r'));
+    static_assert(clean_query.view() == static_cast<std::string_view>( "Test string with embedded reverse carriage returns\n\rAnd trailing whitespace\n\r" ));
+
+    std::cout << "\nAll conditions passed successfully!\n";
+}
+
 int main() {
     test1();
     test2();
     test3();
     test4();
     test5();
+    test6();
+    test7();
+    test8();
 }
